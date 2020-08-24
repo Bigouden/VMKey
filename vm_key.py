@@ -161,7 +161,7 @@ def args():
     parser.add_argument('host', help="vSphere IP or Hostname")
     parser.add_argument('username', help="vSphere Username")
     parser.add_argument('password', help="vSphere Password")
-    parser.add_argument('virtal_machine', help="VM Name")
+    parser.add_argument('virtual_machine', help="VM Name")
     parser.add_argument('--port', type=int, default=443, help="alternative TCP port to communicate with vSphere API (default: 443)")
     parser.add_argument('--timeout', type=int, default=10, help="timeout for VSphere API connection (default: 10s)")
     parser.add_argument('--debug', action='store_true', help="Enable debug mode")
