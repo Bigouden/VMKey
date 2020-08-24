@@ -85,8 +85,7 @@ HIDCODE = [
 
 def key_to_hid(input_key):
     '''Convert KEY to HID'''
-    for hid in HIDCODE:
-        code, value = hid[1:] 
+    for key, code, values in HIDCODE:
         if input_key == key:
             key, modifiers = values[0]
             return code, modifiers
@@ -94,7 +93,8 @@ def key_to_hid(input_key):
 
 def character_to_hid(char):
     '''Convert CHARACTER to HID'''
-    for key, code, values in HIDCODE:
+    for hid in HIDCODE:
+        code, values = hid[1:]
         for word, modifiers in values:
             if char == word:
                 return code, modifiers
