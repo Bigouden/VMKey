@@ -17,7 +17,7 @@ positional arguments:
 host                  vSphere IP or Hostname
 username              vSphere Username
 password              vSphere Password
-vm                    VM Name
+virtual_machine       VM Name
 
 optional arguments:
 
@@ -32,8 +32,8 @@ optional arguments:
 __Examples__
 
 ```
-vm_key.py host username password vm --string "Hello World !"
-vm_key.py host username password vm --key CTRL_ALT_DEL
+vm_key.py host username password virtual_machine --string "Hello World !"
+vm_key.py host username password virtual_machine --key CTRL_ALT_DEL
 ```
 
 __Notes__
