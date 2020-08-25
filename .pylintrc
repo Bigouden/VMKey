@@ -1,0 +1,6 @@
+[FORMAT]
+max-line-length=150
+generated-members=ldap.*
+
+[DESIGN]
+max-attributes=20

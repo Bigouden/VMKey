@@ -1,5 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #coding: utf-8
+
+'''vm_key.py'''
 
 import argparse
 import atexit
@@ -10,7 +12,7 @@ from pyVmomi import vim
 
 # Source : https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2
 # Description HIDCode : ('KEY_NAME', 'HEX_CODE', [('VALUE1', [ 'MODIFIER1', 'MODIFIER2', ... ]), ('VALUE2', [ 'MODIFIER1', 'MODIFIER2', ... ]), ... ])
-HIDCode = [
+HIDCODE = [
         ('KEY_A', '0x04', [('a', []), ('A', ['KEY_LEFTSHIFT'])]),
         ('KEY_B', '0x05', [('b', []), ('B', ['KEY_LEFTSHIFT'])]),
         ('KEY_C', '0x06', [('c', []), ('C', ['KEY_LEFTSHIFT'])]),
@@ -48,9 +50,9 @@ HIDCode = [
         ('KEY_9', '0x26', [('9', []), ('(', ['KEY_LEFTSHIFT'])]),
         ('KEY_0', '0x27', [('0', []), (')', ['KEY_LEFTSHIFT'])]),
         ('KEY_ENTER', '0x28', [('', [])]),
-        ('KEY_ESC', '0x29', [('', [])]), 
+        ('KEY_ESC', '0x29', [('', [])]),
         ('KEY_BACKSPACE', '0x2a', [('', [])]),
-        ('KEY_TAB', '0x2b', [('', [])]), 
+        ('KEY_TAB', '0x2b', [('', [])]),
         ('KEY_SPACE', '0x2c', [(' ', [])]),
         ('KEY_MINUS', '0x2d', [('-', []), ('_', ['KEY_LEFTSHIFT'])]),
         ('KEY_EQUAL', '0x2e', [('=', []), ('+', ['KEY_LEFTSHIFT'])]),
@@ -81,94 +83,101 @@ HIDCode = [
         ('CTRL_C', '0x06', [('', ['CTRL'])]),
     ]
 
-def KEY2HID(char):
-    for key, code, values in HIDCode:
-        if char == key:
+def key_to_hid(input_key):
+    '''Convert KEY to HID'''
+    for key, code, values in HIDCODE:
+        if input_key == key:
             key, modifiers = values[0]
             return code, modifiers
+    return False
 
-def CHAR2HID(char, args):
-    for key, code, values in HIDCode:
-        for key, modifiers in values:
-            if char == key:
+def character_to_hid(char):
+    '''Convert CHARACTER to HID'''
+    for hid in HIDCODE:
+        code, values = hid[1:]
+        for word, modifiers in values:
+            if char == word:
                 return code, modifiers
+    return False
 
-def HID2HEX(hid):
-    return (int(hid, 16) << 16 | 0007)
+def hid_to_hex(hid):
+    '''Convert HID to HEX'''
+    return int(hid, 16) << 16 | 7
 
-def Keystroke(vm, (code, modifiers), args):
+def key_stroke(virtual_machine, hid, debug=False):
+    '''Sent KEYSTROKE to VIRTUAL MACHINE'''
+    code, modifiers = hid
     tmp = vim.UsbScanCodeSpecKeyEvent()
-    m = vim.UsbScanCodeSpecModifierType()
+    modifier = vim.UsbScanCodeSpecModifierType()
     if "KEY_LEFTSHIFT" in modifiers:
-        m.leftShift = True
+        modifier.leftShift = True
     if "KEY_RIGHTALT" in modifiers:
-        m.rightAlt = True
+        modifier.rightAlt = True
     if "CTRL" in modifiers:
-        m.leftControl = True
+        modifier.leftControl = True
     if "ALT" in modifiers:
-        m.leftAlt = True
-    tmp.modifiers = m
-    tmp.usbHidCode = HID2HEX(code)
-    sp = vim.UsbScanCodeSpec()
-    sp.keyEvents = [tmp]
-    vm.PutUsbScanCodes(sp)
-    if args.debug:
-        print("Send : Keystroke: { code: %s, modifiers: %s } on VM : %s" % (code, modifiers, vm.name))
+        modifier.leftAlt = True
+    tmp.modifiers = modifier
+    tmp.usbHidCode = hid_to_hex(code)
+    inject_hid = vim.UsbScanCodeSpec()
+    inject_hid.keyEvents = [tmp]
+    virtual_machine.PutUsbScanCodes(inject_hid)
+    if debug:
+        print("Send : Keystroke: { code: %s, modifiers: %s } on VM : %s" % (code, modifiers, virtual_machine.name))
 
-def getVM(args):
+def get_vm(arguments):
+    '''Get VIRTUAL MACHINE'''
     try:
-        vm = None
-        socket.setdefaulttimeout(args.timeout)
-        esxi = connect.SmartConnectNoSSL(host=args.host, user=args.username, pwd=args.password, port=args.port)
+        virtual_machine = None
+        socket.setdefaulttimeout(arguments.timeout)
+        esxi = connect.SmartConnectNoSSL(host=arguments.host, user=arguments.username, pwd=arguments.password, port=arguments.port)
         atexit.register(connect.Disconnect, esxi)
         entity_stack = esxi.content.rootFolder.childEntity
         while entity_stack:
             entity = entity_stack.pop()
-            if entity.name == args.vm:
-                vm = entity
+            if entity.name == arguments.virtual_machine:
+                virtual_machine = entity
                 del entity_stack[0:len(entity_stack)]
-                return vm
-            elif hasattr(entity, 'childEntity'):
+                return virtual_machine
+            if hasattr(entity, 'childEntity'):
                 entity_stack.extend(entity.childEntity)
-            elif isinstance(entity, vim.Datacenter):
+            if isinstance(entity, vim.Datacenter):
                 entity_stack.append(entity.vmFolder)
-        if not isinstance(vm, vim.VirtualMachine):
-            msg =  "Virtual Machine %s not found." % args.vm
+        if not isinstance(virtual_machine, vim.VirtualMachine):
+            msg = "Virtual Machine %s not found." % arguments.virtual_machine
             sys.exit(msg)
-    except vim.fault.InvalidLogin as e:
+    except vim.fault.InvalidLogin:
         msg = "Cannot complete login due to an incorrect user name or password."
         sys.exit(msg)
-    except socket.timeout as e:
-        msg = "Unable to connect to %s:%s (%s)" % (args.host, args.port, e)
+    except socket.timeout as exception:
+        msg = "Unable to connect to %s:%s (%s)" % (arguments.host, arguments.port, exception)
         sys.exit(msg)
-    except socket.gaierror as e:
-        msg = "Unable to resolve %s (%s)" % (args.host, e)
+    except socket.gaierror as exception:
+        msg = "Unable to resolve %s (%s)" % (arguments.host, exception)
         sys.exit(msg)
-    except Exception as e:
-        sys.exit(e)
 
 def args():
+    '''Get ARGS'''
     parser = argparse.ArgumentParser(description="VM keystrokes using the vSphere API")
     parser.add_argument('host', help="vSphere IP or Hostname")
     parser.add_argument('username', help="vSphere Username")
     parser.add_argument('password', help="vSphere Password")
-    parser.add_argument('vm', help="VM Name")
+    parser.add_argument('virtual_machine', help="VM Name")
     parser.add_argument('--port', type=int, default=443, help="alternative TCP port to communicate with vSphere API (default: 443)")
     parser.add_argument('--timeout', type=int, default=10, help="timeout for VSphere API connection (default: 10s)")
     parser.add_argument('--debug', action='store_true', help="Enable debug mode")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--key', type=str, choices=[ key[0] for key in HIDCode], help="key to passed to VM")
-    group.add_argument('--string', type=unicode, help="string to passed to VM (Standard ASCII characters only)")
-    args = parser.parse_args()
-    return args
+    group.add_argument('--key', type=str, choices=[key[0] for key in HIDCODE], help="key to passed to VM")
+    group.add_argument('--string', type=str, help="string to passed to VM (Standard ASCII characters only)")
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    args = args()
-    vm = getVM(args)
-    if args.key:
-        Keystroke(vm, KEY2HID(args.key), args)
-        print("Send : Key: [%s] on VM : %s" % (args.key, vm.name))
-    if args.string:
-        for char in list(args.string):
-            Keystroke(vm, CHAR2HID(char, args), args)
-        print("Send : String: [%s] on VM : %s" % (args.string, vm.name))
+    ARGS = args()
+    VIRTUAL_MACHINE = get_vm(ARGS)
+    if ARGS.key:
+        key_stroke(VIRTUAL_MACHINE, key_to_hid(ARGS.key), debug=ARGS.debug)
+        print("Send : Key: [%s] on VM : %s" % (ARGS.key, VIRTUAL_MACHINE.name))
+    if ARGS.string:
+        for character in list(ARGS.string):
+            key_stroke(VIRTUAL_MACHINE, character_to_hid(character), debug=ARGS.debug)
+        print("Send : String: [%s] on VM : %s" % (ARGS.string, VIRTUAL_MACHINE.name))

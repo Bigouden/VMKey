@@ -1,5 +1,5 @@
 # VMKey
-VMKey is an usefull tool write in Python to send keystrokes on VMware virtual machine throught vSphere API.
+vm_key.py is an usefull tool write in Python to send keystrokes on VMware virtual machine throught vSphere API.
 
 __Requirements__
 
@@ -10,14 +10,14 @@ __Requirements__
 __Usage__
 
 ```
-VMKey.py -h
+vm_key.py -h
 
 positional arguments:
 
 host                  vSphere IP or Hostname
 username              vSphere Username
 password              vSphere Password
-vm                    VM Name
+virtual_machine       VM Name
 
 optional arguments:
 
@@ -32,8 +32,8 @@ optional arguments:
 __Examples__
 
 ```
-VMKey.py host username password vm --string "Hello World !"
-VMKey.py host username password vm --key CTRL_ALT_DEL
+vm_key.py host username password virtual_machine --string "Hello World !"
+vm_key.py host username password virtual_machine --key CTRL_ALT_DEL
 ```
 
 __Notes__
